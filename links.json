@@ -1,0 +1,8 @@
+[
+  { "titulo": "Tetris", "url": "https://phfcuditablet.github.io/tetris/", "icone": "🧱", "ativo": true },
+  { "titulo": "Snake", "url": "https://phfcuditablet.github.io/snake/", "icone": "🐍", "ativo": true },
+  { "titulo": "Pong", "url": "https://phfcuditablet.github.io/pong/", "icone": "🏓", "ativo": true },
+  { "titulo": "Setinhas", "url": "https://phfcuditablet.github.io/setinhas/", "icone": "➡️", "ativo": true },
+  { "titulo": "Tetris 2", "url": "https://phfcuditablet.github.io/tetris2/", "icone": "🧩", "ativo": true },
+  { "titulo": "Gatinhos", "url": "https://phfcuditablet.github.io/gatinhos/", "icone": "🐱", "ativo": true }
+]

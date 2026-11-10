@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Administração · Meus Jogos</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <div class="topo"><h1 style="font-size:1.6rem;margin:0">Administração</h1><a href="index.html">← Voltar ao site</a></div>
+
+  <section class="painel" id="telaLogin">
+    <h2>Entrar</h2>
+    <label for="senha">Senha</label>
+    <input type="password" id="senha" autocomplete="current-password">
+    <p class="msg erro" id="msgLogin" role="alert"></p>
+    <button id="btnEntrar">Entrar</button>
+  </section>
+
+  <div id="telaAdmin" hidden>
+    <section class="painel">
+      <h2>Adicionar link</h2>
+      <div class="form-add">
+        <div><label for="novoTitulo">Nome do jogo</label><input type="text" id="novoTitulo" placeholder="Ex.: Memória"></div>
+        <div><label for="novoUrl">Endereço (link)</label><input type="url" id="novoUrl" placeholder="https://..."></div>
+        <button id="btnAdd">Adicionar</button>
+      </div>
+      <p class="msg" id="msgAdd" role="status"></p>
+    </section>
+
+    <section class="painel">
+      <h2>Links</h2>
+      <div id="lista"></div>
+      <p class="aviso">Desabilitar esconde o jogo do site sem apagar o link. As mudanças só valem depois de clicar em <strong>Salvar</strong>.</p>
+    </section>
+
+    <section class="painel">
+      <h2>Backup e publicação</h2>
+      <p class="aviso" style="margin-top:0">O Salvar guarda neste navegador. Para que todo mundo veja as mudanças, baixe o <code>links.json</code> e substitua o arquivo no repositório do GitHub.</p>
+      <div class="acoes" style="justify-content:flex-start;margin-top:12px">
+        <button class="sec" id="btnBaixar">Baixar links.json</button>
+        <button class="sec" id="btnPadrao">Voltar ao padrão</button>
+        <button class="sec" id="btnSair">Sair</button>
+      </div>
+    </section>
+
+    <div class="barra">
+      <button id="btnSalvar">Salvar</button>
+      <span class="msg" id="msgSalvar" role="status"></span>
+    </div>
+  </div>
+</main>
+<script src="app.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+let lista = [];
+let sujo = false;
+
+async function sha256(texto) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function marcarSujo(v) {
+  sujo = v;
+  $('msgSalvar').className = 'msg';
+  $('msgSalvar').textContent = v ? 'Há mudanças não salvas.' : '';
+}
+
+async function abrirAdmin() {
+  $('telaLogin').hidden = true; $('telaAdmin').hidden = false;
+  lista = await carregarLinks();
+  desenhar();
+}
+
+async function entrar() {
+  try {
+    const h = await sha256($('senha').value);
+    if (h === SENHA_HASH) { sessionStorage.setItem('admin-ok', '1'); $('msgLogin').textContent = ''; abrirAdmin(); }
+    else { $('msgLogin').textContent = 'Senha incorreta.'; }
+  } catch (e) { $('msgLogin').textContent = 'Abra o site por https (GitHub Pages) para entrar.'; }
+}
+
+function desenhar() {
+  const box = $('lista'); box.innerHTML = '';
+  if (!lista.length) { box.innerHTML = '<p class="aviso">Nenhum link ainda.</p>'; return; }
+  lista.forEach((l, i) => {
+    const div = document.createElement('div');
+    div.className = 'linha' + (l.ativo ? '' : ' off');
+    const ico = document.createElement('span'); ico.className = 'ico'; ico.textContent = l.icone || '🎮';
+    const dados = document.createElement('div'); dados.className = 'dados';
+    const t = document.createElement('strong'); t.textContent = l.titulo;
+    const u = document.createElement('small'); u.textContent = l.url;
+    dados.append(t, u);
+    const ac = document.createElement('div'); ac.className = 'acoes';
+
+    const sw = document.createElement('label'); sw.className = 'sw';
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = l.ativo;
+    cb.addEventListener('change', () => { l.ativo = cb.checked; marcarSujo(true); desenhar(); });
+    sw.append(cb, document.createTextNode(l.ativo ? 'Habilitado' : 'Desabilitado'));
+
+    const sobe = botao('↑', 'Mover para cima', () => mover(i, -1)); sobe.disabled = i === 0;
+    const desce = botao('↓', 'Mover para baixo', () => mover(i, 1)); desce.disabled = i === lista.length - 1;
+    const rem = botao('Remover', 'Remover ' + l.titulo, () => {
+      if (confirm('Remover "' + l.titulo + '"?')) { lista.splice(i, 1); marcarSujo(true); desenhar(); }
+    }); rem.className = 'perigo';
+    sobe.className = desce.className = 'sec';
+    ac.append(sw, sobe, desce, rem);
+    div.append(ico, dados, ac);
+    box.appendChild(div);
+  });
+}
+
+function botao(txt, rotulo, fn) {
+  const b = document.createElement('button'); b.type = 'button';
+  b.textContent = txt; b.setAttribute('aria-label', rotulo); b.addEventListener('click', fn); return b;
+}
+function mover(i, d) {
+  const j = i + d; if (j < 0 || j >= lista.length) return;
+  [lista[i], lista[j]] = [lista[j], lista[i]]; marcarSujo(true); desenhar();
+}
+
+function adicionar() {
+  const titulo = $('novoTitulo').value.trim(), url = $('novoUrl').value.trim();
+  const msg = $('msgAdd');
+  let ok = false;
+  try { const u = new URL(url); ok = u.protocol === 'https:' || u.protocol === 'http:'; } catch (e) {}
+  if (!titulo) { msg.className = 'msg erro'; msg.textContent = 'Digite o nome do jogo.'; return; }
+  if (!ok) { msg.className = 'msg erro'; msg.textContent = 'Digite um link válido, começando com https://'; return; }
+  lista.push({ titulo, url, icone: '🎮', ativo: true });
+  $('novoTitulo').value = ''; $('novoUrl').value = '';
+  msg.className = 'msg ok'; msg.textContent = 'Adicionado. Clique em Salvar no fim da página.';
+  marcarSujo(true); desenhar();
+}
+
+function salvar() {
+  try { salvarLinks(lista); marcarSujo(false); $('msgSalvar').className = 'msg ok'; $('msgSalvar').textContent = 'Salvo!'; }
+  catch (e) { $('msgSalvar').className = 'msg erro'; $('msgSalvar').textContent = 'Não foi possível salvar neste navegador.'; }
+}
+
+$('btnEntrar').addEventListener('click', entrar);
+$('senha').addEventListener('keydown', e => { if (e.key === 'Enter') entrar(); });
+$('btnAdd').addEventListener('click', adicionar);
+$('novoUrl').addEventListener('keydown', e => { if (e.key === 'Enter') adicionar(); });
+$('btnSalvar').addEventListener('click', salvar);
+$('btnSair').addEventListener('click', () => { sessionStorage.removeItem('admin-ok'); location.reload(); });
+$('btnPadrao').addEventListener('click', () => {
+  if (confirm('Voltar à lista original? Suas mudanças salvas neste navegador serão apagadas.')) {
+    limparSalvo(); location.reload();
+  }
+});
+$('btnBaixar').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(lista, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'links.json'; a.click();
+  URL.revokeObjectURL(a.href);
+});
+window.addEventListener('beforeunload', e => { if (sujo) { e.preventDefault(); e.returnValue = ''; } });
+
+if (sessionStorage.getItem('admin-ok') === '1') abrirAdmin();
+</script>
+</body>
+</html>

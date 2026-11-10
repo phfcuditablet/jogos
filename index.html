@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meus Jogos</title>
+<meta name="description" content="Jogos feitos por mim para jogar direto no navegador.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>Meus <span>Jogos</span></h1>
+    <p class="sub">Jogos feitos por mim. É só escolher e jogar, direto no navegador.</p>
+  </header>
+  <ul class="grade" id="grade"></ul>
+  <p class="vazio" id="vazio" hidden>Novos jogos em breve.</p>
+</main>
+<footer>
+  © <span id="ano"></span> Meus Jogos
+  <a class="admin-link" href="admin.html" aria-label="Administração" title="Administração">⚙</a>
+</footer>
+<script src="app.js"></script>
+<script>
+document.getElementById('ano').textContent = new Date().getFullYear();
+carregarLinks().then(lista => {
+  const grade = document.getElementById('grade');
+  const ativos = lista.filter(l => l.ativo);
+  document.getElementById('vazio').hidden = ativos.length > 0;
+  ativos.forEach(l => {
+    const li = document.createElement('li');
+    const a = document.createElement('a');
+    a.className = 'jogo';
+    a.href = l.url;
+    const ico = document.createElement('span'); ico.className = 'ico'; ico.textContent = l.icone || '🎮';
+    const nome = document.createElement('span'); nome.className = 'nome'; nome.textContent = l.titulo;
+    const j = document.createElement('span'); j.className = 'jogar'; j.textContent = 'Jogar ▶';
+    a.append(ico, nome, j);
+    li.appendChild(a); grade.appendChild(li);
+  });
+});
+</script>
+</body>
+</html>
